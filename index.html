@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주차 (JooCha) - AI 혼잡도 예측 & 주차 대안 서비스</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <header class="bg-blue-600 text-white shadow-md">
+        <div class="max-w-xl mx-auto px-4 py-4 flex items-center justify-between">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-square-parking text-amber-300 text-2xl"></i> 주차 (JooCha)
+            </h1>
+            <span class="text-xs bg-blue-700 px-2.5 py-1 rounded-full font-medium">AI 혼잡도 분석기</span>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto w-full px-4 py-6 flex-grow space-y-6">
+
+        <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-blue-100 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-md">STEP 1</span>
+                <h2 class="text-lg font-bold">방문 정보 입력</h2>
+            </div>
+            
+            <form id="parkingForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-1">방문 장소</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-location-dot absolute left-3.5 top-3.5 text-slate-400"></i>
+                        <input type="text" id="location" required placeholder="예: 강남역, 여의도 한강공원" 
+                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">방문 날짜</label>
+                        <input type="date" id="date" required 
+                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">방문 시간대</label>
+                        <select id="time" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                            <option value="">시간 선택</option>
+                            </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-1">방문 목적 (선택)</label>
+                    <select id="purpose" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                        <option value="일반">단순 방문 / 기타</option>
+                        <option value="식사">식사 / 카페</option>
+                        <option value="쇼핑">쇼핑 / 문화생활</option>
+                        <option value="업무">업무 / 비즈니스</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md shadow-blue-200 transition-all flex items-center justify-center gap-2 mt-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> AI 혼잡도 예측하기
+                </button>
+            </form>
+        </section>
+
+        <div id="loading" class="hidden bg-white rounded-2xl p-8 shadow-sm border border-slate-100 text-center space-y-3">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+            <p class="text-sm font-medium text-slate-600">AI가 장소 데이터와 시간대 혼잡도를 분석 중입니다...</p>
+        </div>
+
+        <section id="resultStep" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-md">STEP 2</span>
+                    <h2 class="text-lg font-bold">AI 혼잡도 분석 결과</h2>
+                </div>
+                <span id="badgeStatus" class="text-xs font-bold px-3 py-1 rounded-full text-white">상태</span>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-100 text-center space-y-3">
+                <p class="text-xs font-semibold text-slate-500">예상 혼잡도 수치</p>
+                <div class="text-4xl font-extrabold" id="congestionValue">0%</div>
+                
+                <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                    <div id="progressBar" class="h-3 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200 grid grid-cols-2 gap-2 text-left">
+                    <div>
+                        <span class="text-xs text-slate-400 block">주차 성공 가능성</span>
+                        <span id="parkingProbability" class="text-base font-bold text-slate-700">0%</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">예상 상태</span>
+                        <span id="statusText" class="text-base font-bold text-slate-700">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-blue-50/50 border border-blue-100 rounded-xl p-4 text-xs leading-relaxed text-slate-700 flex gap-3 items-start">
+                <i class="fa-solid fa-robot text-blue-500 text-lg mt-0.5"></i>
+                <div id="aiReportText">입력하신 조건에 부합하는 분석 데이터를 불러오는 중입니다.</div>
+            </div>
+        </section>
+
+        <section id="alternativeStep" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+            <div class="flex items-center gap-2">
+                <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-md">STEP 3</span>
+                <h2 class="text-lg font-bold">AI 맞춤 대안 제시</h2>
+            </div>
+            <p class="text-xs text-slate-500">혼잡도가 높아 주차가 어려울 수 있습니다. 인근 대체 주차장을 이용해 보세요.</p>
+
+            <div class="space-y-3" id="alternativeList">
+                </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-100 border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+        <p>© 2026 주차 (JooCha). All rights reserved.</p>
+    </footer>
+
+    <script>
+        // 오늘 날짜 및 시간 세팅
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('date');
+            const timeSelect = document.getElementById('time');
+            
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+
+            for (let i = 0; i < 24; i++) {
+                const hour = i < 10 ? `0${i}` : `${i}`;
+                const option = document.createElement('option');
+                option.value = hour;
+                option.textContent = `${hour}:00 시`;
+                if (i === 14) option.selected = true; // 기본값 14시
+                timeSelect.appendChild(option);
+            }
+        });
+
+        // Form 제출 이벤트
+        document.getElementById('parkingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const location = document.getElementById('location').value;
+            const date = document.getElementById('date').value;
+            const time = parseInt(document.getElementById('time').value);
+            const purpose = document.getElementById('purpose').value;
+
+            // 로딩 표시
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultStep').classList.add('hidden');
+            document.getElementById('alternativeStep').classList.add('hidden');
+
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+                analyzeParkingData(location, date, time, purpose);
+            }, 800);
+        });
+
+        // 혼잡도 예측 및 로직 처리
+        function analyzeParkingData(location, date, time, purpose) {
+            const dayOfWeek = new Date(date).getDay(); // 0: 일요일, 6: 토요일
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            
+            // 1. 알고리즘: 기본 혼잡도 계산 (주말, 피크타임 가중치)
+            let baseScore = Math.floor(Math.random() * 30) + 20; // 기본 20~50
+            if (isWeekend) baseScore += 25;
+            if (time >= 11 && time <= 15) baseScore += 20; // 점심/피크
+            if (time >= 17 && time <= 20) baseScore += 20; // 저녁/피크
+
+            // 수치 제한 (0~100%)
+            const congestion = Math.min(Math.max(baseScore, 10), 98);
+            const probability = Math.max(100 - congestion + Math.floor(Math.random() * 10 - 5), 2);
+
+            // 2. 상태 구분
+            let status = "";
+            let colorClass = "";
+            let badgeBg = "";
+
+            if (congestion <= 25) {
+                status = "여유";
+                colorClass = "bg-emerald-500";
+                badgeBg = "bg-emerald-500";
+            } else if (congestion <= 60) {
+                status = "보통";
+                colorClass = "bg-blue-500";
+                badgeBg = "bg-blue-500";
+            } else if (congestion <= 80) {
+                status = "혼잡";
+                colorClass = "bg-amber-500";
+                badgeBg = "bg-amber-500";
+            } else {
+                status = "위험";
+                colorClass = "bg-rose-500";
+                badgeBg = "bg-rose-500";
+            }
+
+            // 3. UI 업데이트 (STEP 2)
+            document.getElementById('resultStep').classList.remove('hidden');
+            document.getElementById('congestionValue').innerText = `${congestion}%`;
+            document.getElementById('congestionValue').className = `text-4xl font-extrabold ${colorClass.replace('bg-', 'text-')}`;
+            
+            const progressBar = document.getElementById('progressBar');
+            progressBar.className = `h-3 rounded-full transition-all duration-1000 ${colorClass}`;
+            progressBar.style.width = `${congestion}%`;
+
+            document.getElementById('parkingProbability').innerText = `${probability}%`;
+            document.getElementById('statusText').innerText = status;
+            
+            const badge = document.getElementById('badgeStatus');
+            badge.innerText = status;
+            badge.className = `text-xs font-bold px-3 py-1 rounded-full text-white ${badgeBg}`;
+
+            // AI 설명 문구 생성
+            document.getElementById('aiReportText').innerHTML = `
+                <div>
+                    <strong>[${location}]</strong>의 ${date} ${time}시 예상 혼잡도는 <span class="font-bold">${congestion}% (${status})</span>입니다.<br>
+                    ${isWeekend ? '주말 방문으로 인해' : '평일 해당 시간대'} 주변 차량 통행량이 많아 주차 공간 확보에 <span class="font-bold">${probability}%의 확률</span>이 예상됩니다.
+                </div>
+            `;
+
+            // 4. STEP 3 대안 제시 (61% 이상인 경우)
+            const alternativeStep = document.getElementById('alternativeStep');
+            if (congestion >= 61) {
+                alternativeStep.classList.remove('hidden');
+                renderAlternatives(location);
+            } else {
+                alternativeStep.classList.add('hidden');
+            }
+        }
+
+        // 대안 주차장 리스트 동적 생성
+        function renderAlternatives(location) {
+            const listContainer = document.getElementById('alternativeList');
+            
+            const alternatives = [
+                { name: `${location} 근처 공영주차장`, distance: "도보 4분 (280m)", price: "10분당 500원", tip: "공영 주차장으로 회차율이 빠름" },
+                { name: `GS타임즈 ${location} 민영주차장`, distance: "도보 6분 (420m)", price: "10분당 1,000원", tip: "주차 공간이 넓어 초보 운전자 추천" },
+            ];
+
+            listContainer.innerHTML = alternatives.map(item => `
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center hover:border-blue-300 transition-all">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-parking text-blue-600"></i>
+                            <span class="font-bold text-sm text-slate-800">${item.name}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 flex gap-3">
+                            <span><i class="fa-solid fa-person-walking"></i> ${item.distance}</span>
+                            <span><i class="fa-solid fa-won-sign"></i> ${item.price}</span>
+                        </div>
+                        <p class="text-[11px] text-blue-600 font-medium">💡 ${item.tip}</p>
+                    </div>
+                    <button class="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg font-semibold transition-all">
+                        길안내
+                    </button>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
